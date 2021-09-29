@@ -1,0 +1,51 @@
+	
+	setSeed(getSeed() + asInteger(sample(0:1000, 1)));
+	
+	// a line that should start the recording of tree sequence file for all subpopulations
+	sim.treeSeqRememberIndividuals(sim.subpopulations.individuals);
+
+}
+
+
+// we then create the new population that is composed of a certain proportion of individuals from p1 and p2
+
+2{
+	sim.addSubpop("p3", 10000, 0.5);
+	p3.setMigrationRates(c(p1, p2), c(0.1, 0.9));
+
+}
+
+
+// now we do not need p1 and p2 population anymore and we want p3 population to evolve on it own so we change the migration rate so that parents only came from p3 and delate the two parental populations
+
+3{
+	p3.setMigrationRates(c(p1, p2), c(0.0, 0.0));
+	p1.setSubpopulationSize(0);
+	p2.setSubpopulationSize(0);
+	//just to check that the population is what we wanted
+	P3Individuals = sample(p3.individuals, 100, replace=F);
+	//P3Individuals.genomes.output("P3_ini.txt");
+
+}
+
+
+//end of the simulations 
+
+1602 late(){
+	sim.treeSeqOutput("Slim_output.tree");
+	sim.simulationFinished();
+	
+	cat("-------------\n");
+	cat("finished on generation " + (sim.generation)+ "\n\n");
+	cat("-------------\n");
+
+
+}
+
+modifyChild() {
+        // females should not have a Y, males should have a Y
+        if (child.sex == "F")
+                return !childGenome2.containsMarkerMutation(m1, 11250000);
+        else
+                return childGenome2.containsMarkerMutation(m1, 11250000);
+}

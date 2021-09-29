@@ -1,0 +1,61 @@
+	//now we have to turn on sex
+	initializeSex("A");
+	
+	
+	// The 2 different types of chromosomes
+	initializeGenomicElement(g1, 0, 22500001); // Size of X
+	initializeGenomicElement(g2, 22500002, 119000003); // Size of 2 and 3 combined
+	
+	// Now we need to have two recombination map one for the male and one for the female: 
+	
+	// for the females
+	
+	lines = readFile("Recomb_slim_F.txt"); 
+	rates = NULL;
+	ends = NULL;
+	for (line in lines)
+	{
+		components = strsplit(line, "\t");
+		ends = c(ends, asInteger(components[0]));
+		rates = c(rates, asFloat(components[1]));
+	}
+	ends = c(ends[1:(size(ends)-1)] - 2, 119000003); rates = rates * 1e-8; initializeRecombinationRate(rates, ends, sex="F");
+	
+	
+		// for the Males
+	
+	lines = readFile("Recomb_slim_M.txt"); 
+	rates = NULL;
+	ends = NULL;
+	for (line in lines)
+	{
+		components = strsplit(line, "\t");
+		ends = c(ends, asInteger(components[0]));
+		rates = c(rates, asFloat(components[1]));
+	}
+	ends = c(ends[1:(size(ends)-1)] - 2, 119000003); rates = rates * 1e-8; initializeRecombinationRate(rates, ends, sex="M");
+	
+	
+	//initialize tree seq recording
+	initializeTreeSeq(simplificationInterval=10);
+
+}
+
+
+// Creating two new populations with only one individual in each
+
+1 late() {
+	
+	 //creating the two populations with several individuals to have both males and females
+	 sim.addSubpop("p1", 10, 0.5);
+	 sim.addSubpop("p2", 10, 0.5);
+	
+	 // we first add the marker Y on males of both populations
+	 Indp1 = p1.individuals;
+	 Indp1[Indp1.sex == "M"].genome2.addNewMutation(m1, 0, 11250000);
+	 Indp2 = p2.individuals;
+	 Indp2[Indp2.sex == "M"].genome2.addNewMutation(m1, 0, 11250000);
+	
+	 // sex mutations only going to the X chromosome
+        GenomesP1SexMut = c(Indp1[Indp1.sex == "F"].genomes, Indp1[Indp1.sex == "M"].genome1);
+        GenomesP2SexMut = c(Indp2[Indp2.sex == "F"].genomes, Indp2[Indp2.sex == "M"].genome1);   

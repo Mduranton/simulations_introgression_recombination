@@ -1,0 +1,9 @@
+
+initialize()
+{
+	
+	// mutation rate :
+	initializeMutationRate(0);
+	
+	
+	//Initializing the different types of mutations neutral co-dominant 
