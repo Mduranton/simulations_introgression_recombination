@@ -1,0 +1,164 @@
+
+initialize()
+{
+	
+	// mutation rate :
+	initializeMutationRate(0);
+	
+	
+	//Initializing the two mutations types : both positive, co-dominant, with a selection coefficient fowloing an exponential distribution with a mean of 0.001 
+	
+	// select the selection coefficient 
+	initializeMutationType("m1", 0.5, "e", 0.01);
+	m1.mutationStackPolicy = "l";
+	m1.color = "red";
+	
+	initializeMutationType("m2", 0.5, "e", 0.01);
+	m2.mutationStackPolicy = "l";
+	m2.color = "green";
+	
+	// creating a new type of neutral mutation just to mark the Y chromosome and check that no individual as more than one y chromosome
+	
+	initializeMutationType("m3", 1.0, "f", 0); //Y
+	m3.mutationStackPolicy = "l";
+	m3.color = "blue";
+	
+	// genomic elements : now we need two genomic element type to model sex and non-sex chromosomes
+	initializeGenomicElementType("g1", c(m1, m2, m3), c(1,1,1)); // representing the X chromosome
+	initializeGenomicElementType("g2", c(m1, m2), c(1,1)); // representing the 2 and 3 chromosomes
+
+
+	//now we have to turn on sex
+	initializeSex("A");
+	
+	
+	// The 2 different types of chromosomes
+	initializeGenomicElement(g1, 0, 22500001); // Size of X
+	initializeGenomicElement(g2, 22500002, 119000003); // Size of 2 and 3 combined
+	
+	// Now we need to have two recombination map one for the male and one for the female: 
+	
+	// for the females
+	
+	lines = readFile("Recomb_slim_F.txt"); 
+	rates = NULL;
+	ends = NULL;
+	for (line in lines)
+	{
+		components = strsplit(line, "\t");
+		ends = c(ends, asInteger(components[0]));
+		rates = c(rates, asFloat(components[1]));
+	}
+	ends = c(ends[1:(size(ends)-1)] - 2, 119000003); rates = rates * 1e-8; initializeRecombinationRate(rates, ends, sex="F");
+	
+	
+		// for the Males
+	
+	lines = readFile("Recomb_slim_M.txt"); 
+	rates = NULL;
+	ends = NULL;
+	for (line in lines)
+	{
+		components = strsplit(line, "\t");
+		ends = c(ends, asInteger(components[0]));
+		rates = c(rates, asFloat(components[1]));
+	}
+	ends = c(ends[1:(size(ends)-1)] - 2, 119000003); rates = rates * 1e-8; initializeRecombinationRate(rates, ends, sex="M");
+	
+	
+	//initialize tree seq recording
+	initializeTreeSeq(simplificationInterval=10);
+
+}
+
+
+// Creating two new populations with only 10 individual in each
+
+1 late() {
+	
+	//creating the two populations with several individuals to have both males and females
+	sim.addSubpop("p1", 10, 0.5);
+	sim.addSubpop("p2", 10, 0.5);
+	
+	// we first add the marker Y on males of both populations
+	Indp1 = p1.individuals;
+	Indp1[Indp1.sex == "M"].genome2.addNewMutation(m3, 0, 11250000);
+	Indp2 = p2.individuals;
+	Indp2[Indp2.sex == "M"].genome2.addNewMutation(m3, 0, 11250000);
+	
+	
+	// Sex mutations only going to the X chromosome
+	GenomesP1SexMut = c(Indp1[Indp1.sex == "F"].genomes, Indp1[Indp1.sex == "M"].genome1); 
+	GenomesP2SexMut = c(Indp2[Indp2.sex == "F"].genomes, Indp2[Indp2.sex == "M"].genome1); 
+	
+	for (i in 1:20)
+	{
+		GenomesP1SexMut.addNewDrawnMutation(m1, rdunif(1,0,22500000));
+	}
+	for (i in 1:180)
+	{
+		GenomesP2SexMut.addNewDrawnMutation(m2, rdunif(1,0,22500000));
+	}	
+	
+	
+	
+	// adding a certain number of positively selected mutations in each population
+	for (i in 1:80)
+	{
+		Indp1.genomes.addNewDrawnMutation(m1, rdunif(1,22500002,119000003));
+	}
+	for (i in 1:720)
+	{
+		Indp2.genomes.addNewDrawnMutation(m2, rdunif(1,22500002,119000003)); 
+	}
+	
+	
+	
+	setSeed(getSeed() + asInteger(sample(0:1000, 1)));
+	
+	// a line that should start the recording of tree sequence file for all subpopulations
+	sim.treeSeqRememberIndividuals(sim.subpopulations.individuals);
+
+
+}
+
+
+
+// we then create the new population that is composed of a certain proportion of individuals from p1 and p2
+
+2{
+	sim.addSubpop("p3", 10000, 0.5);
+	p3.setMigrationRates(c(p1, p2), c(0.1, 0.9));
+
+}
+
+
+// now we do not need p1 and p2 population anymore and we want p3 population to evolve on it own so we change the migration rate so that parents only came from p3 and delate the two parental populations
+
+3{
+	p3.setMigrationRates(c(p1, p2), c(0.0, 0.0));
+	p1.setSubpopulationSize(0);
+	p2.setSubpopulationSize(0);
+
+}
+
+
+
+//end of the simulations 
+
+1602 late(){
+	sim.treeSeqOutput("Slim_output.tree");
+	sim.simulationFinished();
+	
+
+
+}
+
+modifyChild() {
+	// females should not have a Y, males should have a Y
+	if (child.sex == "F")
+		return !childGenome2.containsMarkerMutation(m3, 11250000);
+	else
+		return childGenome2.containsMarkerMutation(m3, 11250000);
+}
+
